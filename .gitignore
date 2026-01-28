@@ -1,0 +1,13 @@
+# VS Code
+.vscode/
+*.code-workspace
+
+# Mac & Windows system files
+.DS_Store
+Thumbs.db
+
+# PHP & Composer (if you use libraries later)
+vendor/
+
+# Environment variables (Safety first!)
+.env
