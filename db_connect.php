@@ -9,7 +9,7 @@
     //Establish connection
     $conn = new mysqli($host, $dbUser, $dbPass, $dbName);
 
-    // Check for errors
+    //Check for errors
     if ($conn->connect_error) {
         header('Content-Type: application/json');
         echo json_encode([
