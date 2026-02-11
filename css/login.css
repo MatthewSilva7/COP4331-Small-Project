@@ -1,0 +1,84 @@
+/* 1. The Background - Matches Contact Manager Yellow */
+body {
+    background-color: #e9c46a; /* The yellow color */
+    font-family: Arial, sans-serif; /* Matches contact page font */
+    
+    /* Keep centering logic */
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 2. The Card - Matches .addcontact and .contacttable style */
+.card {
+    background-color: white;
+    
+    /* The signature "Retro" look */
+    border: 2px solid black !important; /* Thick outline */
+    border-radius: 10px !important;     /* 10px radius */
+    box-shadow: black 5px 5px !important; /* Hard, non-blurry shadow */
+    
+    padding: 2rem; /* Add some breathing room inside */
+}
+
+/* 3. The Headers */
+h3 {
+    text-align: center;
+    color: #264653; /* The dark blue from Contact Manager headers */
+    font-weight: bold;
+}
+
+/* 4. The Inputs */
+.form-control {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 15px; /* Spacing between inputs */
+    padding: 10px;
+}
+
+.form-control:focus {
+    /* When clicking, turn the border the teal color */
+    border-color: #2a9d8f;
+    box-shadow: none; /* Remove bootstrap glow */
+    outline: none;
+}
+
+/* 5. The Buttons - Matches Contact Manager Teal */
+.btn {
+    background-color: #2a9d8f !important; /* Teal color */
+    border: 1px solid black !important; /* Add border to match theme */
+    color: white;
+    font-weight: bold;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.btn:hover {
+    /* Darken slightly on hover */
+    background-color: #21867a !important; 
+    color: white;
+}
+
+.btn:active {
+    transform: translate(2px, 2px); /* Click effect */
+}
+
+/* 6. Links */
+a {
+    color: #264653;
+    font-weight: bold;
+}
+
+a:hover {
+    color: #2a9d8f;
+    text-decoration: underline;
+}
+
+/* 7. Error Messages */
+#loginResult, #registerResult {
+    font-weight: bold;
+    margin-bottom: 15px;
+}
