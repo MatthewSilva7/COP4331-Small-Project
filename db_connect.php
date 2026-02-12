@@ -5,9 +5,10 @@
     $dbName = "smallproj";
     $dbUser = "smallproj_user";
     $dbPass = "smallproj_pass";
+    $port = 3308; // XAMPP MySQL port temp for now
 
     //Establish connection
-    $conn = new mysqli($host, $dbUser, $dbPass, $dbName);
+    $conn = @new mysqli($host, $dbUser, $dbPass, $dbName, $port);
 
     //Check for errors
     if ($conn->connect_error) {
