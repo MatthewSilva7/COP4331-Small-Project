@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>API Tests – Register & Search Contacts</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.25rem; }
+    button { padding: 0.5rem 1rem; cursor: pointer; margin-bottom: 1rem; }
+    .result { margin: 0.5rem 0; padding: 0.5rem; border-radius: 4px; }
+    .pass { background: #d4edda; color: #155724; }
+    .fail { background: #f8d7da; color: #721c24; }
+    .pending { background: #e2e3e5; color: #383d41; }
+    pre { font-size: 0.85rem; overflow-x: auto; margin: 0.25rem 0; }
+  </style>
+</head>
+<body>
+  <h1>API Tests: Register & Search Contacts</h1>
+  <p>Run from the same origin as your app (e.g. <code>http://localhost:8080/smallproj/test-api.html</code>).</p>
+
+  <h2>Test cases</h2>
+  <p><strong>Register API</strong></p>
+  <ol>
+    <li><strong>Register success</strong> – valid data, unique login → 200, <code>id</code> &gt; 0, no <code>error</code>.</li>
+    <li><strong>Register missing fields</strong> – empty firstName (or lastName/login/password) → 200, <code>error</code> "Missing required fields".</li>
+    <li><strong>Register duplicate login</strong> – login that already exists (e.g. "RickL") → 200, <code>error</code> "Login already exists".</li>
+  </ol>
+  <p><strong>Search Contacts API</strong></p>
+  <ol start="4">
+    <li><strong>Search full</strong> – <code>userId: 1</code>, <code>search: ""</code> → 200, <code>contacts</code> array (all for that user).</li>
+    <li><strong>Search part (name)</strong> – <code>userId: 1</code>, <code>search: "Alice"</code> → 200, at least one contact with firstName "Alice".</li>
+    <li><strong>Search user ID required</strong> – <code>userId: 0</code> or missing → 200, <code>error</code> "User ID required".</li>
+    <li><strong>Search no matches</strong> – <code>userId: 1</code>, <code>search: "ZZZNoMatch"</code> → 200, <code>contacts</code> empty array.</li>
+    <li><strong>Search filter by phone</strong> – <code>userId: 1</code>, <code>search: "123-456"</code> → 200, at least one contact (e.g. Alice).</li>
+    <li><strong>Search filter by email</strong> – <code>userId: 1</code>, <code>search: "alice@"</code> → 200, at least one contact.</li>
+  </ol>
+
+  <button type="button" id="runTests">Run all tests</button>
+
+  <div id="test1" class="result pending">1. Register success – not run</div>
+  <div id="test2" class="result pending">2. Register missing fields – not run</div>
+  <div id="test3" class="result pending">3. Register duplicate login – not run</div>
+  <div id="test4" class="result pending">4. Search full – not run</div>
+  <div id="test5" class="result pending">5. Search part (name) – not run</div>
+  <div id="test6" class="result pending">6. Search user ID required – not run</div>
+  <div id="test7" class="result pending">7. Search no matches – not run</div>
+  <div id="test8" class="result pending">8. Search filter by phone – not run</div>
+  <div id="test9" class="result pending">9. Search filter by email – not run</div>
+
+  <script>
+    function setResult(id, pass, message, detail) {
+      const el = document.getElementById(id);
+      el.className = 'result ' + (pass === true ? 'pass' : pass === false ? 'fail' : 'pending');
+      el.innerHTML = message + (detail ? '<pre>' + detail + '</pre>' : '');
+    }
+
+    function parseJson(text) {
+      try { return JSON.parse(text); } catch (e) {}
+      const m = text.match(/\{[\s\S]*\}/);
+      if (m) try { return JSON.parse(m[0]); } catch (e) {}
+      return null;
+    }
+
+    function post(url, body) {
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify(body)
+      });
+    }
+
+    async function test1RegisterSuccess() {
+      const login = 'TestUser_' + Date.now();
+      const payload = { firstName: 'Test', lastName: 'User', login, password: 'TestPass123' };
+      const res = await post('API/registerAPI.php', payload);
+      const text = await res.text();
+      let data = parseJson(text);
+      if (!data) { setResult('test1', false, 'Register success: invalid response', text); return; }
+      if (res.status !== 200) { setResult('test1', false, 'Register success: HTTP ' + res.status, text); return; }
+      if (data.error && data.error.length > 0) {
+        const msg = data.details ? data.error + ' – ' + data.details : data.error;
+        setResult('test1', false, 'Register success: ' + msg, text);
+        return;
+      }
+      if (!data.id || data.id <= 0) { setResult('test1', false, 'Register success: expected id > 0', text); return; }
+      setResult('test1', true, 'Register success: OK (id=' + data.id + ', login=' + login + ')');
+    }
+
+    async function test2RegisterMissingFields() {
+      const payload = { firstName: '', lastName: 'User', login: 'x', password: 'p' };
+      const res = await post('API/registerAPI.php', payload);
+      const text = await res.text();
+      let data = parseJson(text);
+      if (!data) { setResult('test2', false, 'Register missing fields: invalid response', text); return; }
+      if (res.status !== 200) { setResult('test2', false, 'Register missing fields: HTTP ' + res.status, text); return; }
+      const expectErr = 'Missing required fields';
+      if (!data.error || data.error.indexOf(expectErr) === -1) {
+        setResult('test2', false, 'Register missing fields: expected error "' + expectErr + '"', text);
+        return;
+      }
+      setResult('test2', true, 'Register missing fields: OK – got "' + data.error + '"');
+    }
+
+    async function test3RegisterDuplicateLogin() {
+      const payload = { firstName: 'X', lastName: 'Y', login: 'RickL', password: 'any' };
+      const res = await post('API/registerAPI.php', payload);
+      const text = await res.text();
+      let data = parseJson(text);
+      if (!data) { setResult('test3', false, 'Register duplicate: invalid response', text); return; }
+      if (res.status !== 200) { setResult('test3', false, 'Register duplicate: HTTP ' + res.status, text); return; }
+      const expectErr = 'Login already exists';
+      if (!data.error || data.error.indexOf(expectErr) === -1) {
+        setResult('test3', false, 'Register duplicate: expected error "' + expectErr + '"', text);
+        return;
+      }
+      setResult('test3', true, 'Register duplicate: OK – got "' + data.error + '"');
+    }
+
+    async function test4SearchFull() {
+      const payload = { userId: 1, search: '' };
+      const res = await post('API/searchContactsAPI.php', payload);
+      const text = await res.text();
+      let data = parseJson(text);
+      if (!data) { setResult('test4', false, 'Search full: invalid response', text); return; }
+      if (res.status !== 200) { setResult('test4', false, 'Search full: HTTP ' + res.status, text); return; }
+      if (data.error && data.error.length > 0) { setResult('test4', false, 'Search full: ' + data.error, text); return; }
+      if (!Array.isArray(data.contacts)) { setResult('test4', false, 'Search full: expected "contacts" array', text); return; }
+      setResult('test4', true, 'Search full: OK – ' + data.contacts.length + ' contact(s)');
+    }
+
+    async function test5SearchPartName() {
+      const payload = { userId: 1, search: 'Alice' };
+      const res = await post('API/searchContactsAPI.php', payload);
+      const text = await res.text();
+      let data = parseJson(text);
+      if (!data) { setResult('test5', false, 'Search part (name): invalid response', text); return; }
+      if (res.status !== 200) { setResult('test5', false, 'Search part: HTTP ' + res.status, text); return; }
+      if (data.error && data.error.length > 0) { setResult('test5', false, 'Search part: ' + data.error, text); return; }
+      if (!Array.isArray(data.contacts)) { setResult('test5', false, 'Search part: expected "contacts" array', text); return; }
+      const alice = data.contacts.find(c => (c.firstName || '').toLowerCase() === 'alice');
+      if (!alice) { setResult('test5', false, 'Search part: expected contact with firstName "Alice"', text); return; }
+      setResult('test5', true, 'Search part (name): OK – found ' + alice.firstName + ' ' + alice.lastName);
+    }
+
+    async function test6SearchUserIdRequired() {
+      const payload = { userId: 0, search: '' };
+      const res = await post('API/searchContactsAPI.php', payload);
+      const text = await res.text();
+      let data = parseJson(text);
+      if (!data) { setResult('test6', false, 'Search userId required: invalid response', text); return; }
+      if (res.status !== 200) { setResult('test6', false, 'Search userId required: HTTP ' + res.status, text); return; }
+      const expectErr = 'User ID required';
+      if (!data.error || data.error.indexOf(expectErr) === -1) {
+        setResult('test6', false, 'Search userId required: expected "' + expectErr + '"', text);
+        return;
+      }
+      setResult('test6', true, 'Search userId required: OK – got "' + data.error + '"');
+    }
+
+    async function test7SearchNoMatches() {
+      const payload = { userId: 1, search: 'ZZZNoMatch' };
+      const res = await post('API/searchContactsAPI.php', payload);
+      const text = await res.text();
+      let data = parseJson(text);
+      if (!data) { setResult('test7', false, 'Search no matches: invalid response', text); return; }
+      if (res.status !== 200) { setResult('test7', false, 'Search no matches: HTTP ' + res.status, text); return; }
+      if (data.error && data.error.length > 0) { setResult('test7', false, 'Search no matches: ' + data.error, text); return; }
+      if (!Array.isArray(data.contacts)) { setResult('test7', false, 'Search no matches: expected "contacts" array', text); return; }
+      if (data.contacts.length !== 0) {
+        setResult('test7', false, 'Search no matches: expected 0 contacts, got ' + data.contacts.length, text);
+        return;
+      }
+      setResult('test7', true, 'Search no matches: OK – 0 contacts');
+    }
+
+    async function test8SearchFilterByPhone() {
+      const payload = { userId: 1, search: '123-456' };
+      const res = await post('API/searchContactsAPI.php', payload);
+      const text = await res.text();
+      let data = parseJson(text);
+      if (!data) { setResult('test8', false, 'Search by phone: invalid response', text); return; }
+      if (res.status !== 200) { setResult('test8', false, 'Search by phone: HTTP ' + res.status, text); return; }
+      if (data.error && data.error.length > 0) { setResult('test8', false, 'Search by phone: ' + data.error, text); return; }
+      if (!Array.isArray(data.contacts)) { setResult('test8', false, 'Search by phone: expected "contacts" array', text); return; }
+      const hasPhone = data.contacts.some(c => (c.phone || '').indexOf('123-456') !== -1);
+      if (!hasPhone) { setResult('test8', false, 'Search by phone: expected at least one contact with 123-456', text); return; }
+      setResult('test8', true, 'Search by phone: OK – ' + data.contacts.length + ' contact(s)');
+    }
+
+    async function test9SearchFilterByEmail() {
+      const payload = { userId: 1, search: 'alice@' };
+      const res = await post('API/searchContactsAPI.php', payload);
+      const text = await res.text();
+      let data = parseJson(text);
+      if (!data) { setResult('test9', false, 'Search by email: invalid response', text); return; }
+      if (res.status !== 200) { setResult('test9', false, 'Search by email: HTTP ' + res.status, text); return; }
+      if (data.error && data.error.length > 0) { setResult('test9', false, 'Search by email: ' + data.error, text); return; }
+      if (!Array.isArray(data.contacts)) { setResult('test9', false, 'Search by email: expected "contacts" array', text); return; }
+      const hasEmail = data.contacts.some(c => (c.email || '').toLowerCase().indexOf('alice@') !== -1);
+      if (!hasEmail) { setResult('test9', false, 'Search by email: expected at least one contact with alice@', text); return; }
+      setResult('test9', true, 'Search by email: OK – ' + data.contacts.length + ' contact(s)');
+    }
+
+    document.getElementById('runTests').addEventListener('click', async function () {
+      for (let i = 1; i <= 9; i++) setResult('test' + i, null, i + '. – running…');
+      await test1RegisterSuccess();
+      await test2RegisterMissingFields();
+      await test3RegisterDuplicateLogin();
+      await test4SearchFull();
+      await test5SearchPartName();
+      await test6SearchUserIdRequired();
+      await test7SearchNoMatches();
+      await test8SearchFilterByPhone();
+      await test9SearchFilterByEmail();
+    });
+  </script>
+</body>
+</html>
