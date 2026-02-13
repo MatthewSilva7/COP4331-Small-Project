@@ -1,143 +1,193 @@
 // ================================
-// Contact Manager Frontend Script
+// Contact Manager - Backend API Calls
 // ================================
 
-// Load contacts from localStorage or start empty
-let contacts = JSON.parse(localStorage.getItem("contacts")) || [];
+const searchUrl = "API/searchContactsAPI.php";
+const addUrl = "addContact.php";
+const updateUrl = "updateContact.php";
+const deleteUrl = "deleteContact.php";
 
-// DOM references
 const form = document.getElementById("contactForm");
 const tableBody = document.getElementById("contactTableBody");
 const searchInput = document.getElementById("searchInput");
 
-// ================================
-// SAVE TO LOCAL STORAGE
-// ================================
-function saveContacts() {
-  localStorage.setItem("contacts", JSON.stringify(contacts));
+// ------------------------------
+// Auth
+// ------------------------------
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+  return match ? decodeURIComponent(match[2]) : null;
 }
 
-// ================================
-// RENDER CONTACT TABLE (READ)
-// ================================
-function renderContacts(list = contacts) {
-  tableBody.innerHTML = "";
+function getUserId() {
+  // Cookie format from login.js: "firstName=X,lastName=Y,userId=Z" (last call overwrites with userId in lastName position)
+  const val = getCookie("firstName");
+  if (!val) return null;
+  const m = val.match(/lastName=(\d+)/) || val.match(/userId=(\d+)/);
+  return m ? m[1] : null;
+}
 
-  if (list.length === 0) {
+function ensureLoggedIn() {
+  const uid = getUserId();
+  if (!uid) {
+    window.location.href = "index.html";
+    return false;
+  }
+  return uid;
+}
+
+// ------------------------------
+// API Helper
+// ------------------------------
+async function apiCall(url, payload) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json; charset=UTF-8" },
+    body: JSON.stringify(payload)
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`Request failed (${res.status}): ${text.slice(0, 100)}`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error("Invalid JSON response: " + text.slice(0, 100));
+  }
+}
+
+// ------------------------------
+// Load / Search Contacts
+// ------------------------------
+async function loadContacts(search = "") {
+  const userId = ensureLoggedIn();
+  if (!userId) return;
+
+  const data = await apiCall(searchUrl, { userId, search });
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+  renderContacts(data.contacts || []);
+}
+
+// ------------------------------
+// Render Table
+// ------------------------------
+function renderContacts(list) {
+  tableBody.innerHTML = "";
+  if (!list || list.length === 0) {
     tableBody.innerHTML = `<tr><td colspan="5">No contacts found.</td></tr>`;
     return;
   }
-
-  list.forEach(contact => {
+  list.forEach(c => {
     const row = document.createElement("tr");
-
     row.innerHTML = `
-      <td>${contact.firstName} ${contact.lastName}</td>
-      <td>${contact.email}</td>
-      <td>${contact.phone}</td>
-      <td>${contact.createdAt}</td>
+      <td>${c.firstName} ${c.lastName}</td>
+      <td>${c.email}</td>
+      <td>${c.phone}</td>
+      <td>${c.dateCreated || ""}</td>
       <td>
-        <button onclick="editContact('${contact.id}')">Edit</button>
-        <button onclick="deleteContact('${contact.id}')">Delete</button>
+        <button onclick="editContact(${c.id})">Edit</button>
+        <button onclick="deleteContact(${c.id})">Delete</button>
       </td>
     `;
-
     tableBody.appendChild(row);
   });
 }
 
-// ================================
-// CREATE + UPDATE
-// ================================
-form.addEventListener("submit", function (e) {
+// ------------------------------
+// Create / Update Contact
+// ------------------------------
+form.addEventListener("submit", async function (e) {
   e.preventDefault();
 
-  const id = document.getElementById("contactId").value;
-  const firstName = document.getElementById("firstName").value.trim();
-  const lastName = document.getElementById("lastName").value.trim();
-  const email = document.getElementById("email").value.trim();
-  const phone = document.getElementById("phone").value.trim();
+  const userId = ensureLoggedIn();
+  if (!userId) return;
 
-  // Basic validation
-  if (!firstName || !lastName || !email || !phone) {
+  const id = document.getElementById("contactId").value;
+  const payload = {
+    firstName: document.getElementById("firstName").value.trim(),
+    lastName: document.getElementById("lastName").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    phone: document.getElementById("phone").value.trim(),
+    userId: parseInt(userId, 10)
+  };
+
+  if (!payload.firstName || !payload.lastName || !payload.email || !payload.phone) {
     alert("Please fill out all fields.");
     return;
   }
 
-  if (id) {
-    // UPDATE EXISTING CONTACT
-    const contact = contacts.find(c => c.id === id);
-
-    if (contact) {
-      contact.firstName = firstName;
-      contact.lastName = lastName;
-      contact.email = email;
-      contact.phone = phone;
+  try {
+    if (id) {
+      payload.id = parseInt(id, 10);
+      const data = await apiCall(updateUrl, payload);
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+    } else {
+      const data = await apiCall(addUrl, payload);
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
     }
-  } else {
-    // CREATE NEW CONTACT
-    const newContact = {
-      id: crypto.randomUUID(),
-      firstName,
-      lastName,
-      email,
-      phone,
-      createdAt: new Date().toLocaleDateString()
-    };
-
-    contacts.push(newContact);
+  } catch (err) {
+    alert("Error saving contact: " + err.message);
+    return;
   }
-
-  saveContacts();
 
   form.reset();
   document.getElementById("contactId").value = "";
-
-  renderContacts();
+  loadContacts(searchInput.value);
 });
 
-// ================================
-// EDIT CONTACT (LOAD INTO FORM)
-// ================================
-function editContact(id) {
-  const contact = contacts.find(c => c.id === id);
-  if (!contact) return;
-
-  document.getElementById("contactId").value = contact.id;
-  document.getElementById("firstName").value = contact.firstName;
-  document.getElementById("lastName").value = contact.lastName;
-  document.getElementById("email").value = contact.email;
-  document.getElementById("phone").value = contact.phone;
+// ------------------------------
+// Edit (load into form)
+// ------------------------------
+async function editContact(id) {
+  const userId = ensureLoggedIn();
+  if (!userId) return;
+  const data = await apiCall(searchUrl, { userId, search: "" });
+  const contacts = data.contacts || [];
+  const c = contacts.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById("contactId").value = c.id;
+  document.getElementById("firstName").value = c.firstName;
+  document.getElementById("lastName").value = c.lastName;
+  document.getElementById("email").value = c.email;
+  document.getElementById("phone").value = c.phone;
 }
 
-// ================================
-// DELETE CONTACT
-// ================================
-function deleteContact(id) {
-  const confirmed = confirm("Delete this contact?");
-  if (!confirmed) return;
-
-  contacts = contacts.filter(c => c.id !== id);
-  saveContacts();
-  renderContacts();
+// ------------------------------
+// Delete Contact
+// ------------------------------
+async function deleteContact(id) {
+  if (!confirm("Delete this contact?")) return;
+  const userId = ensureLoggedIn();
+  if (!userId) return;
+  const data = await apiCall(deleteUrl, { id, userId: parseInt(userId, 10) });
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+  loadContacts(searchInput.value);
 }
 
-// ================================
-// SEARCH CONTACTS
-// ================================
+// ------------------------------
+// Search
+// ------------------------------
+let searchTimeout;
 searchInput.addEventListener("input", function () {
-  const query = searchInput.value.toLowerCase();
-
-  const filtered = contacts.filter(c =>
-    `${c.firstName} ${c.lastName}`.toLowerCase().includes(query) ||
-    c.email.toLowerCase().includes(query) ||
-    c.phone.toLowerCase().includes(query)
-  );
-
-  renderContacts(filtered);
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    loadContacts(searchInput.value.trim());
+  }, 200);
 });
 
-// ================================
-// INITIAL LOAD
-// ================================
-renderContacts();
+// ------------------------------
+// Init
+// ------------------------------
+loadContacts();
