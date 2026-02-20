@@ -10,6 +10,7 @@ const deleteUrl = "deleteContact.php";
 const form = document.getElementById("contactForm");
 const tableBody = document.getElementById("contactTableBody");
 const searchInput = document.getElementById("searchInput");
+const formTitle = document.getElementById("formTitle");
 
 // ------------------------------
 // Auth
@@ -140,7 +141,9 @@ form.addEventListener("submit", async function (e) {
   }
 
   form.reset();
-  document.getElementById("contactId").value = "";
+    document.getElementById("contactId").value = "";
+
+    formTitle.textContent = "Add Contact";
   loadContacts(searchInput.value);
 });
 
@@ -159,6 +162,8 @@ async function editContact(id) {
   document.getElementById("lastName").value = c.lastName;
   document.getElementById("email").value = c.email;
   document.getElementById("phone").value = c.phone;
+
+    formTitle.textContent = "Edit Contact";
 }
 
 // ------------------------------
