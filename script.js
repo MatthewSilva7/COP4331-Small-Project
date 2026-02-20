@@ -37,6 +37,16 @@ function ensureLoggedIn() {
   return uid;
 }
 
+function formatDate(dateString) {
+    if (!dateString) return "";
+
+    // Convert MySQL "YYYY-MM-DD HH:MM:SS" to ISO format
+    const isoString = dateString.replace(" ", "T") + "Z";
+    const date = new Date(isoString);
+
+    return date.toLocaleString(); // Converts to user's local timezone
+}
+
 // ------------------------------
 // API Helper
 // ------------------------------
@@ -87,7 +97,7 @@ function renderContacts(list) {
       <td>${c.firstName} ${c.lastName}</td>
       <td>${c.email}</td>
       <td>${c.phone}</td>
-      <td>${c.dateCreated || ""}</td>
+      <td>${formatDate(c.dateCreated) || ""}</td>
       <td>
         <button onclick="editContact(${c.id})">Edit</button>
         <button onclick="deleteContact(${c.id})">Delete</button>
