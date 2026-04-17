@@ -27,11 +27,29 @@
     </div>
 
     <div class="contacttable">
-        <!-- Search -->
-        <input type="text" id="searchInput" placeholder="Search contacts..." />
+        <div class="toolbar" role="region" aria-label="Contact controls">
+            <div class="toolbar-group">
+                <label class="sr-only" for="searchInput">Search contacts</label>
+                <input type="text" id="searchInput" placeholder="Search contacts..." aria-label="Search contacts" />
+                <button type="button" id="clearSearchButton" class="secondary-button">Clear</button>
+            </div>
+
+            <div class="toolbar-group toolbar-group-sort">
+                <label for="sortSelect">Sort by</label>
+                <select id="sortSelect" aria-label="Sort contacts">
+                    <option value="name-asc">Name (A-Z)</option>
+                    <option value="name-desc">Name (Z-A)</option>
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="resultsSummary" class="results-summary" aria-live="polite"></div>
 
         <!-- Contacts Table -->
         <table>
+            <caption class="sr-only">Saved contacts</caption>
             <thead>
             <tr>
                 <th>Name</th>
