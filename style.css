@@ -91,6 +91,18 @@ input, button {
   border: 1px solid black;
 }
 
+.checkbox-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 5px;
+    font-size: 14px;
+}
+
+.checkbox-field input {
+    margin: 0;
+}
+
 button {
     background-color: #2a9d8f;
     color: white;
@@ -140,6 +152,23 @@ select {
     background-color: #264653;
 }
 
+.favorite-toggle {
+    min-width: 42px;
+    background-color: #f4a261;
+    color: #1f2933;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.favorite-toggle.is-favorite {
+    background-color: #e76f51;
+    color: #fff8e7;
+}
+
+.favorites-filter {
+    margin-left: auto;
+}
+
 @media (max-width: 1100px) {
     .container {
         flex-direction: column;
@@ -160,5 +189,9 @@ select {
     .toolbar-group,
     .toolbar-group-sort {
         width: 100%;
+    }
+
+    .favorites-filter {
+        margin-left: 5px;
     }
 }

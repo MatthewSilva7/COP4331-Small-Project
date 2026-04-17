@@ -21,6 +21,10 @@
             <input type="text" id="lastName" placeholder="Last Name" required>
             <input type="email" id="email" placeholder="Email" required>
             <input type="tel" id="phone" placeholder="Phone" required>
+            <label class="checkbox-field" for="isFavorite">
+                <input type="checkbox" id="isFavorite">
+                <span>Mark as favorite</span>
+            </label>
 
             <button type="submit">Save Contact</button>
         </form>
@@ -37,12 +41,18 @@
             <div class="toolbar-group toolbar-group-sort">
                 <label for="sortSelect">Sort by</label>
                 <select id="sortSelect" aria-label="Sort contacts">
+                    <option value="favorites">Favorites First</option>
                     <option value="name-asc">Name (A-Z)</option>
                     <option value="name-desc">Name (Z-A)</option>
                     <option value="newest">Newest First</option>
                     <option value="oldest">Oldest First</option>
                 </select>
             </div>
+
+            <label class="checkbox-field favorites-filter" for="favoritesOnly">
+                <input type="checkbox" id="favoritesOnly">
+                <span>Favorites only</span>
+            </label>
         </div>
 
         <div id="resultsSummary" class="results-summary" aria-live="polite"></div>
@@ -52,6 +62,7 @@
             <caption class="sr-only">Saved contacts</caption>
             <thead>
             <tr>
+                <th>Favorite</th>
                 <th>Name</th>
                 <th>Email</th>
                 <th>Phone</th>

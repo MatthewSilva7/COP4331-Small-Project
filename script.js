@@ -6,6 +6,7 @@ const searchUrl = "API/searchContactsAPI.php";
 const addUrl = "addContact.php";
 const updateUrl = "updateContact.php";
 const deleteUrl = "deleteContact.php";
+const favoriteUrl = "toggleFavorite.php";
 
 const form = document.getElementById("contactForm");
 const tableBody = document.getElementById("contactTableBody");
@@ -14,6 +15,8 @@ const sortSelect = document.getElementById("sortSelect");
 const clearSearchButton = document.getElementById("clearSearchButton");
 const resultsSummary = document.getElementById("resultsSummary");
 const formTitle = document.getElementById("formTitle");
+const favoriteCheckbox = document.getElementById("isFavorite");
+const favoritesOnlyCheckbox = document.getElementById("favoritesOnly");
 let currentContacts = [];
 
 // ------------------------------
@@ -69,6 +72,10 @@ function sortContacts(list) {
   const sortMode = sortSelect ? sortSelect.value : "name-asc";
 
   sorted.sort((a, b) => {
+    if (sortMode === "favorites" && a.isFavorite !== b.isFavorite) {
+      return Number(b.isFavorite) - Number(a.isFavorite);
+    }
+
     const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
     const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
 
@@ -92,16 +99,25 @@ function updateResultsSummary(count, search = "") {
   if (!resultsSummary) return;
 
   const trimmedSearch = search.trim();
+  const favoritesOnly = favoritesOnlyCheckbox && favoritesOnlyCheckbox.checked;
   if (count === 0) {
-    resultsSummary.textContent = trimmedSearch
-      ? `No contacts match "${trimmedSearch}".`
+    if (trimmedSearch) {
+      resultsSummary.textContent = favoritesOnly
+        ? `No favorite contacts match "${trimmedSearch}".`
+        : `No contacts match "${trimmedSearch}".`;
+      return;
+    }
+
+    resultsSummary.textContent = favoritesOnly
+      ? "No favorite contacts saved yet."
       : "No contacts saved yet.";
     return;
   }
 
+  const contactLabel = `${count} ${favoritesOnly ? "favorite " : ""}contact${count === 1 ? "" : "s"}`;
   resultsSummary.textContent = trimmedSearch
-    ? `Showing ${count} contact${count === 1 ? "" : "s"} for "${trimmedSearch}".`
-    : `Showing ${count} saved contact${count === 1 ? "" : "s"}.`;
+    ? `Showing ${contactLabel} for "${trimmedSearch}".`
+    : `Showing ${contactLabel}.`;
 }
 
 // ------------------------------
@@ -148,17 +164,29 @@ async function loadContacts(search = "") {
 // Render Table
 // ------------------------------
 function renderContacts(list) {
-  const sortedContacts = sortContacts(list || []);
+  const visibleContacts = favoritesOnlyCheckbox && favoritesOnlyCheckbox.checked
+    ? (list || []).filter(contact => contact.isFavorite)
+    : (list || []);
+  const sortedContacts = sortContacts(visibleContacts);
   tableBody.innerHTML = "";
   updateResultsSummary(sortedContacts.length, searchInput.value);
 
   if (!sortedContacts || sortedContacts.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="5">No contacts found.</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="6">No contacts found.</td></tr>`;
     return;
   }
   sortedContacts.forEach(c => {
     const row = document.createElement("tr");
     row.innerHTML = `
+      <td>
+        <button
+          type="button"
+          class="favorite-toggle ${c.isFavorite ? "is-favorite" : ""}"
+          onclick="toggleFavorite(${c.id}, ${c.isFavorite ? "false" : "true"})"
+          aria-label="${c.isFavorite ? "Remove from favorites" : "Add to favorites"}"
+          title="${c.isFavorite ? "Remove from favorites" : "Add to favorites"}"
+        >${c.isFavorite ? "&#9733;" : "&#9734;"}</button>
+      </td>
       <td>${escapeHtml(c.firstName)} ${escapeHtml(c.lastName)}</td>
       <td>${escapeHtml(c.email)}</td>
       <td>${escapeHtml(c.phone)}</td>
@@ -187,7 +215,8 @@ form.addEventListener("submit", async function (e) {
     lastName: document.getElementById("lastName").value.trim(),
     email: document.getElementById("email").value.trim(),
     phone: document.getElementById("phone").value.trim(),
-    userId: parseInt(userId, 10)
+    userId: parseInt(userId, 10),
+    isFavorite: favoriteCheckbox.checked
   };
 
   if (!payload.firstName || !payload.lastName || !payload.email || !payload.phone) {
@@ -216,9 +245,9 @@ form.addEventListener("submit", async function (e) {
   }
 
   form.reset();
-    document.getElementById("contactId").value = "";
-
-    formTitle.textContent = "Add Contact";
+  document.getElementById("contactId").value = "";
+  favoriteCheckbox.checked = false;
+  formTitle.textContent = "Add Contact";
   loadContacts(searchInput.value);
 });
 
@@ -235,8 +264,8 @@ async function editContact(id) {
   document.getElementById("lastName").value = c.lastName;
   document.getElementById("email").value = c.email;
   document.getElementById("phone").value = c.phone;
-
-    formTitle.textContent = "Edit Contact";
+  favoriteCheckbox.checked = Boolean(c.isFavorite);
+  formTitle.textContent = "Edit Contact";
 }
 
 // ------------------------------
@@ -254,6 +283,33 @@ async function deleteContact(id) {
   loadContacts(searchInput.value);
 }
 
+async function toggleFavorite(id, isFavorite) {
+  const userId = ensureLoggedIn();
+  if (!userId) return;
+
+  try {
+    const data = await apiCall(favoriteUrl, {
+      id,
+      userId: parseInt(userId, 10),
+      isFavorite
+    });
+
+    if (data.error) {
+      alert(data.error);
+      return;
+    }
+
+    const contact = currentContacts.find(x => x.id === id);
+    if (contact) {
+      contact.isFavorite = isFavorite;
+    }
+
+    renderContacts(currentContacts);
+  } catch (err) {
+    alert("Error updating favorite: " + err.message);
+  }
+}
+
 // ------------------------------
 // Search
 // ------------------------------
@@ -266,6 +322,10 @@ searchInput.addEventListener("input", function () {
 });
 
 sortSelect.addEventListener("change", function () {
+  renderContacts(currentContacts);
+});
+
+favoritesOnlyCheckbox.addEventListener("change", function () {
   renderContacts(currentContacts);
 });
 

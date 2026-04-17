@@ -19,6 +19,7 @@ CREATE TABLE Contacts (
     Phone VARCHAR(50) NOT NULL DEFAULT '',
     Email VARCHAR(50) NOT NULL DEFAULT '',
     UserID INT NOT NULL DEFAULT '0',
+    IsFavorite TINYINT(1) NOT NULL DEFAULT 0,
     DateCreated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (ID),
     FOREIGN KEY (UserID) REFERENCES Users(ID)
@@ -31,7 +32,7 @@ INSERT INTO Users (FirstName, LastName, Login, Password) VALUES
 ('John', 'Doe', 'JohnD', 'John123');
 
 -- Insert Test Contacts
-INSERT INTO Contacts (FirstName, LastName, Phone, Email, UserID) VALUES 
-('Alice', 'Wonderland', '123-456-7890', 'alice@example.com', 1),
-('Bob', 'Builder', '987-654-3210', 'bob@example.com', 1),
-('Charlie', 'Chocolate', '555-555-5555', 'charlie@example.com', 3);
+INSERT INTO Contacts (FirstName, LastName, Phone, Email, UserID, IsFavorite) VALUES 
+('Alice', 'Wonderland', '123-456-7890', 'alice@example.com', 1, 1),
+('Bob', 'Builder', '987-654-3210', 'bob@example.com', 1, 0),
+('Charlie', 'Chocolate', '555-555-5555', 'charlie@example.com', 3, 1);

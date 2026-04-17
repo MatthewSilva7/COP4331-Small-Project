@@ -4,6 +4,8 @@
 
     //Include database connection file
     include 'db_connect.php';
+    require_once 'contact_schema.php';
+    ensureFavoriteColumn($conn);
 
     //Read JSON data sent from frontend
     $inData = json_decode(file_get_contents('php://input'), true);
